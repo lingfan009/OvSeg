@@ -71,6 +71,42 @@ def get_parser():
     return parser
 
 
+
+def get_image_embedding(config_file, class_names, input_images, model_weights):
+    mp.set_start_method("spawn", force=True)
+
+    # load config from file and command-line arguments
+    cfg = get_cfg()
+    # for poly lr schedule
+    add_deeplab_config(cfg)
+    add_ovseg_config(cfg)
+    cfg.merge_from_file(config_file)
+    cfg.merge_from_list(args.opts)
+    cfg.freeze()
+
+    demo = VisualizationDemo(cfg)
+
+    pixel_embedings_results = []
+    # print(inputs)
+    for path in tqdm.tqdm(input_images, disable=False):
+        img = imageio.v3.imread(path)
+
+        img_shape = (img.shape[1], img.shape[0])
+        print(img_shape)
+        if img_shape[0] >= 2304 * 0.9:
+            img_shape = (int(2304 * 0.9), int(1728 * 0.9))
+        print(f"res:{img_shape}, path:{path.split('/')[-1]}")
+        if img.shape[1] != img_shape[0]:
+            img = cv2.resize(img, img_shape)
+
+        predictions, visualized_output, image_pixel_feature = demo.run_on_image(img, class_names)
+        gc.collect()
+        torch.cuda.empty_cache()
+        pixel_embedings_results.append(image_pixel_feature)
+    return pixel_embedings_results
+
+
+
 if __name__ == "__main__":
 
     mp.set_start_method("spawn", force=True)
